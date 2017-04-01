@@ -1,0 +1,78 @@
+.root{
+    -fx-background-image: url("../images/background.png");
+    -fx-background-size: cover;
+    -fx-background-repeat: no-repeat;
+    -fx-font-size: 15px;
+    -fx-border-radius: 10px;
+}
+
+.button{
+    -fx-text-fill: rgb(236, 4, 42);
+    -fx-background-color: rgb(36, 33, 33);
+    -fx-border-width: 2px;
+    -fx-border-style: solid;
+    -fx-font-style: oblique;
+    -fx-font-weight: bold;
+    -fx-min-width: 100px;
+    -fx-font-size: 14px;
+    -fx-border-color: rgb(236, 4, 42);
+}
+
+.button:hover{
+    -fx-text-fill: rgb(36, 33, 33);
+    -fx-background-color: rgb(236, 4, 42);
+    -fx-border-color: rgb(36, 33, 33);
+}
+
+.control{
+    -fx-text-alignment: center;
+}
+
+#musicTime{
+    -fx-text-fill: white;
+}
+
+#musicBox{
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size:16px;
+}
+
+#songImage{
+    -fx-border-color: rgb(236, 4, 42);
+    -fx-border-width: 2px;
+    -fx-border-style: solid;
+}
+
+.slider{
+    -fx-min-width: 150px;
+}
+
+.label{
+    -fx-text-fill: rgb(236, 4, 42);
+    -fx-font-style: oblique;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.scroll-pane > .vewport{
+    -fx-background: rgb(36, 33, 33);
+    -fx-background-color: rgb(36, 33, 33);
+}
+
+.scroll-pane{
+    -fx-background: rgb(36, 33, 33);
+    -fx-background-color: rgb(36, 33, 33);
+}
+
+.scroll-bar{
+    -fx-background-color: rgb(36, 33, 33);
+}
+
+.scroll-bar .thumb{
+    -fx-border-width: 2px;
+    -fx-border-color: rgb(236, 4, 42);
+    -fx-background-color: rgb(36, 33, 33);
+}
+
+.scroll-bar .

@@ -40,7 +40,9 @@ public class Main extends Application {
     private double xOffset = 0;
     private double yOffset = 0;
     int kol = 0;
-    int counter;
+    int counter = 0;
+    int playCnt = 0;
+    String path;
     Label elemList;
     String str;
     @Override
@@ -84,8 +86,8 @@ public class Main extends Application {
         musicTime.setId("musicTime");
         ImageView songImage = new ImageView(new Image("file:resources/Cover.jpg"));
         ImageView playPause = new ImageView(new Image("file:src/images/play.png"));
-        ImageView next = new ImageView(new Image("file:src/images/pause.png"));
-        ImageView prev = new ImageView(new Image("file:src/images/pause.png"));
+        ImageView next = new ImageView(new Image("file:src/images/next.png"));
+        ImageView prev = new ImageView(new Image("file:src/images/prev.png"));
         ImageView exitButton = new ImageView(new Image("file:src/images/exit.png"));
 
         next.setFitWidth(70.0);
@@ -140,12 +142,10 @@ public class Main extends Application {
             @Override
             public void handle(ActionEvent event) {
                 list = fileChooser.showOpenMultipleDialog(primaryStage);
-                String path;
                 if(list != null) {
                     System.out.println(list.get(0));
                     labelList.clear();
                     playlist.getChildren().clear();
-                    List<AttachedPicture> pict = new ArrayList<AttachedPicture>();
                     for(counter = 0;counter < list.size();counter++){
                         path = list.get(counter).getAbsolutePath();
                         path = path.replace("\\", "/");
@@ -153,20 +153,19 @@ public class Main extends Application {
                         try{
                             MP3 mp3 = new MP3(path);
                             elemList = new Label(mp3.getBand() + " - " + mp3.getTitle());
-                            String st = mp3.getLyrics();
+                            /*String st = mp3.getLyrics();
                             st = st.replace("\\", "/");
                             System.out.println(st);
                             File f = new File(st);
-                            songImage.setImage(new Image(f.toURI().toURL().toString()));
+                            songImage.setImage(new Image(f.toURI().toURL().toString()));*/
                         }catch(IOException ex) {
                             System.out.println("Error!");
                         }
                         labelList.add(elemList);
                         playlist.getChildren().add(labelList.get(counter));
                     }
-                    Media media = new Media(list.get(0).toURI().toString());
+                    Media media = new Media(list.get(playCnt).toURI().toString());
                     mediaPlayer = new MediaPlayer(media);
-                    labelList.get(0).setStyle("-fx-background-color: white");
                 }
             }
         });
@@ -175,11 +174,58 @@ public class Main extends Application {
             if(list != null){
                 if(Checked == 0){
                     mediaPlayer.play();
+                    path = list.get(playCnt).getAbsolutePath();
+                    path = path.replace("\\", "/");
+                    try{
+                        MP3 mp3 = new MP3(path);
+                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
+                    }catch(IOException ex){}
+                    labelList.get(playCnt).setStyle("-fx-background-color: white");
                     Checked = 1;
                 }
                 else{
                     mediaPlayer.pause();
                     Checked = 0;
+                }
+            }
+        });
+
+        next.setOnMouseClicked(event -> {
+            if(list != null){
+                if(Checked == 1){
+                    mediaPlayer.stop();
+                    playCnt++;
+                    if(playCnt == list.size()){
+                        labelList.get(list.size()-1).setStyle("-fx-background-color: rgb(36, 33, 33)");
+                        playCnt = 0;
+                    }
+                    else
+                        labelList.get(playCnt-1).setStyle("-fx-background-color: rgb(36, 33, 33)");
+                    path = list.get(playCnt).getAbsolutePath();
+                    path = path.replace("\\", "/");
+                    try{
+                        MP3 mp3 = new MP3(path);
+                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
+                    }catch(IOException ex){}
+                    Media media = new Media(list.get(playCnt).toURI().toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    labelList.get(playCnt).setStyle("-fx-background-color: white");
+                    mediaPlayer.play();
+                }
+                if(Checked == 0){
+                    playCnt++;
+                    if(playCnt == list.size())
+                        playCnt = 0;
+                    path = list.get(playCnt).getAbsolutePath();
+                    path = path.replace("\\", "/");
+                    try{
+                        MP3 mp3 = new MP3(path);
+                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
+                    }catch(IOException ex){}
+                    Media media = new Media(list.get(playCnt).toURI().toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    mediaPlayer.play();
+                    Checked = 1;
                 }
             }
         });

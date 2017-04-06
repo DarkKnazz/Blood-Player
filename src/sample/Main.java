@@ -26,15 +26,18 @@ import javafx.stage.StageStyle;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.*;
 
 import com.beaglebuddy.mp3.MP3;
 import com.beaglebuddy.id3.enums.PictureType;
+import javafx.util.Duration;
 
 public class Main extends Application {
     public List<File> list;
     List<Label> labelList = new ArrayList<>();
     MediaPlayer mediaPlayer;
+    List<MediaPlayer>mediaList = new ArrayList<>();
     int Checked = 0;
     public FileChooser fileChooser = new FileChooser();
     private double xOffset = 0;
@@ -45,6 +48,8 @@ public class Main extends Application {
     String path;
     Label elemList;
     String str;
+    double totalTimeOfMusic;
+    String duration;
     @Override
     public void start(Stage primaryStage) throws Exception{
         VBox playlist = new VBox();
@@ -145,6 +150,7 @@ public class Main extends Application {
                 if(list != null) {
                     System.out.println(list.get(0));
                     labelList.clear();
+                    mediaList.clear();
                     playlist.getChildren().clear();
                     for(counter = 0;counter < list.size();counter++){
                         path = list.get(counter).getAbsolutePath();
@@ -161,11 +167,13 @@ public class Main extends Application {
                         }catch(IOException ex) {
                             System.out.println("Error!");
                         }
+                        musicBox.setText("No tracks is playing");
+                        musicTime.setText("00,00");
+                        slider.setValue(0);
                         labelList.add(elemList);
                         playlist.getChildren().add(labelList.get(counter));
+                        mediaList.add(new MediaPlayer(new Media(list.get(counter).toURI().toString())));
                     }
-                    Media media = new Media(list.get(playCnt).toURI().toString());
-                    mediaPlayer = new MediaPlayer(media);
                 }
             }
         });
@@ -173,18 +181,36 @@ public class Main extends Application {
         playPause.setOnMouseClicked(event -> {
             if(list != null){
                 if(Checked == 0){
-                    mediaPlayer.play();
+                    mediaList.get(playCnt).play();
                     path = list.get(playCnt).getAbsolutePath();
                     path = path.replace("\\", "/");
                     try{
                         MP3 mp3 = new MP3(path);
                         musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
                     }catch(IOException ex){}
-                    labelList.get(playCnt).setStyle("-fx-background-color: white");
+                    labelList.get(playCnt).setStyle("-fx-text-fill: white");
+
+                    totalTimeOfMusic=mediaList.get(playCnt).getTotalDuration().toSeconds();
+                    System.out.println(totalTimeOfMusic);
+
+                    mediaList.get(playCnt).currentTimeProperty().addListener((Observable)->{
+                        if(slider.isValueChanging()){
+                            mediaList.get(playCnt).seek(Duration.seconds((slider.getValue()*(totalTimeOfMusic)/100)));
+                        }
+                        if(slider.isPressed()){
+                            mediaList.get(playCnt).seek(Duration.seconds((slider.getValue()*(totalTimeOfMusic)/100)));
+                        }
+                        //updateValues();
+                        slider.setValue((mediaList.get(playCnt).getCurrentTime().toSeconds()*100)/totalTimeOfMusic);
+                        System.out.println("ok"+mediaList.get(playCnt).getCurrentTime().toSeconds());
+                        musicTime.setText('0'+ String.valueOf(new DecimalFormat("#0.00").format(mediaList.get(playCnt).getCurrentTime().toMinutes())));
+                    });
+
+                    mediaList.get(playCnt).setCycleCount(MediaPlayer.INDEFINITE);
                     Checked = 1;
                 }
                 else{
-                    mediaPlayer.pause();
+                    mediaList.get(playCnt).pause();
                     Checked = 0;
                 }
             }
@@ -193,26 +219,33 @@ public class Main extends Application {
         next.setOnMouseClicked(event -> {
             if(list != null){
                 if(Checked == 1){
-                    mediaPlayer.stop();
+                    musicTime.setText("00,00");
+                    slider.setValue(0);
+                    mediaList.get(playCnt).stop();
                     playCnt++;
                     if(playCnt == list.size()){
-                        labelList.get(list.size()-1).setStyle("-fx-background-color: rgb(36, 33, 33)");
+                        labelList.get(list.size()-1).setStyle("-fx-text-fill: rgb(236, 4, 42)");
                         playCnt = 0;
                     }
                     else
-                        labelList.get(playCnt-1).setStyle("-fx-background-color: rgb(36, 33, 33)");
+                        labelList.get(playCnt-1).setStyle("-fx-text-fill: rgb(236, 4, 42)");
+                    mediaList.get(playCnt).play();
+                    totalTimeOfMusic=mediaList.get(playCnt).getTotalDuration().toSeconds();
+                    System.out.println(totalTimeOfMusic);
+                    labelList.get(playCnt).setStyle("-fx-text-fill: white");
                     path = list.get(playCnt).getAbsolutePath();
                     path = path.replace("\\", "/");
                     try{
                         MP3 mp3 = new MP3(path);
-                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
+                        musicBox.setText(mp3.getTitle());
                     }catch(IOException ex){}
-                    Media media = new Media(list.get(playCnt).toURI().toString());
-                    mediaPlayer = new MediaPlayer(media);
-                    labelList.get(playCnt).setStyle("-fx-background-color: white");
-                    mediaPlayer.play();
+                    Checked = 1;
                 }
                 if(Checked == 0){
+                    musicTime.setText("00,00");
+                    slider.setValue(0);
+                    mediaList.get(playCnt).stop();
+                    labelList.get(playCnt).setStyle("-fx-text-fill: rgb(236, 4, 42)");
                     playCnt++;
                     if(playCnt == list.size())
                         playCnt = 0;
@@ -220,11 +253,10 @@ public class Main extends Application {
                     path = path.replace("\\", "/");
                     try{
                         MP3 mp3 = new MP3(path);
-                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
+                        musicBox.setText(mp3.getTitle());
                     }catch(IOException ex){}
-                    Media media = new Media(list.get(playCnt).toURI().toString());
-                    mediaPlayer = new MediaPlayer(media);
-                    mediaPlayer.play();
+                    labelList.get(playCnt).setStyle("-fx-text-fill: white");
+                    mediaList.get(playCnt).play();
                     Checked = 1;
                 }
             }

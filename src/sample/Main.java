@@ -8,10 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Slider;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -24,21 +21,26 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.io.File;
-import java.io.IOException;
+import java.beans.IntrospectionException;
+import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 
 import com.beaglebuddy.mp3.MP3;
 import com.beaglebuddy.id3.enums.PictureType;
 import javafx.util.Duration;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
     public List<File> list;
     List<Label> labelList = new ArrayList<>();
+    List<String> listTracks = new ArrayList<>();
     MediaPlayer mediaPlayer;
     List<MediaPlayer>mediaList = new ArrayList<>();
-    int Checked = 0;
+    int Checked = -1;
     public FileChooser fileChooser = new FileChooser();
     private double xOffset = 0;
     private double yOffset = 0;
@@ -50,6 +52,9 @@ public class Main extends Application {
     String str;
     double totalTimeOfMusic;
     String duration;
+
+    int timeMin = 0;
+    int diff = 0;
     @Override
     public void start(Stage primaryStage) throws Exception{
         VBox playlist = new VBox();
@@ -83,10 +88,8 @@ public class Main extends Application {
         Label musicBox = new Label("No tracks is playing");
         musicBox.setId("musicBox");
         musicBox.setPadding(new Insets(0, 0,0, 20));
-        Slider slider = new Slider();
-        slider.setMin(0);
-        slider.setMax(100);
-        slider.setValue(0);
+        ProgressBar progressBar = new ProgressBar();
+        progressBar.setProgress(0);
         Label musicTime = new Label("00:00");
         musicTime.setId("musicTime");
         ImageView songImage = new ImageView(new Image("file:resources/Cover.jpg"));
@@ -94,6 +97,7 @@ public class Main extends Application {
         ImageView next = new ImageView(new Image("file:src/images/next.png"));
         ImageView prev = new ImageView(new Image("file:src/images/prev.png"));
         ImageView exitButton = new ImageView(new Image("file:src/images/exit.png"));
+        ImageView addSong = new ImageView(new Image("file:src/images/playlist.png"));
 
         next.setFitWidth(70.0);
         next.setFitHeight(70.0);
@@ -105,13 +109,15 @@ public class Main extends Application {
         songImage.setFitHeight(110.0);
         exitButton.setFitWidth(20.0);
         exitButton.setFitHeight(20.0);
+        addSong.setFitWidth(20.0);
+        addSong.setFitHeight(20.0);
         songImage.setId("songImage");
 
         HBox cnrButtons = new HBox();
         cnrButtons.getChildren().addAll(prev, playPause, next);
 
         HBox song = new HBox();
-        song.getChildren().addAll(slider, musicTime);
+        song.getChildren().addAll(progressBar, musicTime);
         song.setPadding(new Insets(0, 0,0, 10));
 
         VBox control = new VBox();
@@ -122,9 +128,8 @@ public class Main extends Application {
         VBox mainBlock = new VBox();
         HBox mainUnit = new HBox();
         HBox exitButt = new HBox();
-
-        exitButt.getChildren().add(exitButton);
-        exitButt.setPadding(new Insets(-10, 0, 0, 280));
+        exitButt.getChildren().addAll(addSong, exitButton);
+        exitButt.setPadding(new Insets(-10, 0, 0, 260));
         mainUnit.setPadding(new Insets(0, 0,0, 5));
         mainUnit.getChildren().addAll(songImage, control);
         mainBlock.getChildren().addAll(exitButt, mainUnit);
@@ -142,39 +147,12 @@ public class Main extends Application {
         primaryStage.setScene(new Scene(root, 320, 400));
         primaryStage.show();
 
-
         browse.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
                 list = fileChooser.showOpenMultipleDialog(primaryStage);
-                if(list != null) {
-                    System.out.println(list.get(0));
-                    labelList.clear();
-                    mediaList.clear();
-                    playlist.getChildren().clear();
-                    for(counter = 0;counter < list.size();counter++){
-                        path = list.get(counter).getAbsolutePath();
-                        path = path.replace("\\", "/");
-                        System.out.println(path);
-                        try{
-                            MP3 mp3 = new MP3(path);
-                            elemList = new Label(mp3.getBand() + " - " + mp3.getTitle());
-                            /*String st = mp3.getLyrics();
-                            st = st.replace("\\", "/");
-                            System.out.println(st);
-                            File f = new File(st);
-                            songImage.setImage(new Image(f.toURI().toURL().toString()));*/
-                        }catch(IOException ex) {
-                            System.out.println("Error!");
-                        }
-                        musicBox.setText("No tracks is playing");
-                        musicTime.setText("00,00");
-                        slider.setValue(0);
-                        labelList.add(elemList);
-                        playlist.getChildren().add(labelList.get(counter));
-                        mediaList.add(new MediaPlayer(new Media(list.get(counter).toURI().toString())));
-                    }
-                }
+                playCnt = 0;
+                browseFunc(playlist, songImage, musicBox, musicTime, progressBar);
             }
         });
 
@@ -182,35 +160,19 @@ public class Main extends Application {
             if(list != null){
                 if(Checked == 0){
                     mediaList.get(playCnt).play();
+                    playPause.setImage(new Image("file:src/images/pause.png"));
                     path = list.get(playCnt).getAbsolutePath();
                     path = path.replace("\\", "/");
-                    try{
-                        MP3 mp3 = new MP3(path);
-                        musicBox.setText(mp3.getBand() + " - " + mp3.getTitle());
-                    }catch(IOException ex){}
+                    mp3Worker(songImage, musicBox, path);
                     labelList.get(playCnt).setStyle("-fx-text-fill: white");
 
-                    totalTimeOfMusic=mediaList.get(playCnt).getTotalDuration().toSeconds();
-                    System.out.println(totalTimeOfMusic);
+                    moveSlider(progressBar, musicTime, playCnt);
 
-                    mediaList.get(playCnt).currentTimeProperty().addListener((Observable)->{
-                        if(slider.isValueChanging()){
-                            mediaList.get(playCnt).seek(Duration.seconds((slider.getValue()*(totalTimeOfMusic)/100)));
-                        }
-                        if(slider.isPressed()){
-                            mediaList.get(playCnt).seek(Duration.seconds((slider.getValue()*(totalTimeOfMusic)/100)));
-                        }
-                        //updateValues();
-                        slider.setValue((mediaList.get(playCnt).getCurrentTime().toSeconds()*100)/totalTimeOfMusic);
-                        System.out.println("ok"+mediaList.get(playCnt).getCurrentTime().toSeconds());
-                        musicTime.setText('0'+ String.valueOf(new DecimalFormat("#0.00").format(mediaList.get(playCnt).getCurrentTime().toMinutes())));
-                    });
-
-                    mediaList.get(playCnt).setCycleCount(MediaPlayer.INDEFINITE);
                     Checked = 1;
                 }
                 else{
                     mediaList.get(playCnt).pause();
+                    playPause.setImage(new Image("file:src/images/play.png"));
                     Checked = 0;
                 }
             }
@@ -219,9 +181,9 @@ public class Main extends Application {
         next.setOnMouseClicked(event -> {
             if(list != null){
                 if(Checked == 1){
-                    musicTime.setText("00,00");
-                    slider.setValue(0);
                     mediaList.get(playCnt).stop();
+                    musicTime.setText("00,00");
+                    progressBar.setProgress(0);
                     playCnt++;
                     if(playCnt == list.size()){
                         labelList.get(list.size()-1).setStyle("-fx-text-fill: rgb(236, 4, 42)");
@@ -235,27 +197,69 @@ public class Main extends Application {
                     labelList.get(playCnt).setStyle("-fx-text-fill: white");
                     path = list.get(playCnt).getAbsolutePath();
                     path = path.replace("\\", "/");
-                    try{
-                        MP3 mp3 = new MP3(path);
-                        musicBox.setText(mp3.getTitle());
-                    }catch(IOException ex){}
+                    moveSlider(progressBar, musicTime, playCnt);
+                    mp3Worker(songImage, musicBox, path);
+
+
                     Checked = 1;
                 }
                 if(Checked == 0){
-                    musicTime.setText("00,00");
-                    slider.setValue(0);
                     mediaList.get(playCnt).stop();
+                    musicTime.setText("00,00");
+                    progressBar.setProgress(0);
                     labelList.get(playCnt).setStyle("-fx-text-fill: rgb(236, 4, 42)");
                     playCnt++;
                     if(playCnt == list.size())
                         playCnt = 0;
                     path = list.get(playCnt).getAbsolutePath();
                     path = path.replace("\\", "/");
-                    try{
-                        MP3 mp3 = new MP3(path);
-                        musicBox.setText(mp3.getTitle());
-                    }catch(IOException ex){}
+                    mp3Worker(songImage, musicBox, path);
                     labelList.get(playCnt).setStyle("-fx-text-fill: white");
+                    moveSlider(progressBar, musicTime, playCnt);
+                    mediaList.get(playCnt).play();
+                    Checked = 1;
+                }
+            }
+        });
+
+        prev.setOnMouseClicked(event -> {
+            if(list != null){
+                if(Checked == 1){
+                    mediaList.get(playCnt).stop();
+                    musicTime.setText("00,00");
+                    progressBar.setProgress(0);
+                    playCnt--;
+                    if(playCnt == -1){
+                        labelList.get(0).setStyle("-fx-text-fill: rgb(236, 4, 42)");
+                        playCnt = list.size()-1;
+                    }
+                    else
+                        labelList.get(playCnt+1).setStyle("-fx-text-fill: rgb(236, 4, 42)");
+                    mediaList.get(playCnt).play();
+                    totalTimeOfMusic=mediaList.get(playCnt).getTotalDuration().toSeconds();
+                    System.out.println(totalTimeOfMusic);
+                    labelList.get(playCnt).setStyle("-fx-text-fill: white");
+                    path = list.get(playCnt).getAbsolutePath();
+                    path = path.replace("\\", "/");
+                    moveSlider(progressBar, musicTime, playCnt);
+                    mp3Worker(songImage, musicBox, path);
+
+
+                    Checked = 1;
+                }
+                if(Checked == 0){
+                    mediaList.get(playCnt).stop();
+                    musicTime.setText("00,00");
+                    progressBar.setProgress(0);
+                    labelList.get(playCnt).setStyle("-fx-text-fill: rgb(236, 4, 42)");
+                    playCnt--;
+                    if(playCnt == -1)
+                        playCnt = list.size()-1;
+                    path = list.get(playCnt).getAbsolutePath();
+                    path = path.replace("\\", "/");
+                    mp3Worker(songImage, musicBox, path);
+                    labelList.get(playCnt).setStyle("-fx-text-fill: white");
+                    moveSlider(progressBar, musicTime, playCnt);
                     mediaList.get(playCnt).play();
                     Checked = 1;
                 }
@@ -266,9 +270,135 @@ public class Main extends Application {
             Stage stage = (Stage) exitButton.getScene().getWindow();
             stage.close();
         });
+
+        addSong.setOnMouseClicked(event -> {
+            listTracks.add(list.get(playCnt).getAbsolutePath());
+        });
+
+        save.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                for(int i = 0; i < listTracks.size(); i++){
+                    System.out.println(listTracks.get(i));
+                }
+            }
+        });
+
+        load.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                try(BufferedReader reader = new BufferedReader(new FileReader(fileChooser.showOpenDialog(primaryStage)))){
+                    String txt;
+                    List<String> names = new ArrayList<String>();
+                    list = new ArrayList<File>();
+                    while((txt = reader.readLine()) != null) {
+                        names.add(txt);
+                    }
+                    System.out.println(names.get(0));
+                    if(names != null){
+                        playCnt = 0;
+                        for(int j =0; j < names.size(); j++){
+                            list.add(new File(names.get(j)));
+                        }
+                    }
+                    browseFunc(playlist, songImage, musicBox, musicTime, progressBar);
+                }
+                catch(IOException ex){}
+            }
+        });
     }
 
+    public void moveSlider(ProgressBar progressBar, Label musicTime, int cnt){
+        totalTimeOfMusic=mediaList.get(cnt).getTotalDuration().toSeconds();
+        System.out.println(totalTimeOfMusic);
 
+        diff = 0; timeMin = 0;
+
+        mediaList.get(cnt).currentTimeProperty().addListener((Observable)->{
+            //updateValues();
+            int timeSec = 0;
+            String t1 = "0", t2 = "0", tItog = "";
+            double check = 0;
+            progressBar.setProgress((mediaList.get(cnt).getCurrentTime().toSeconds())/totalTimeOfMusic);
+            timeSec = (int)mediaList.get(cnt).getCurrentTime().toSeconds();
+            check = mediaList.get(cnt).getCurrentTime().toSeconds();
+            System.out.println(check);
+            if((timeSec % 60 == 0)&&(timeSec != 0)){
+                timeSec = 0;
+                try{TimeUnit.SECONDS.sleep(1);}
+                catch(InterruptedException ex){}
+                timeMin++;
+                diff += 60;
+            }
+            if(timeSec - diff <= 9){
+                t1 = t1 + String.valueOf(timeSec - diff);
+            }
+            else
+                t1 = String.valueOf(timeSec - diff);
+            if(timeMin <= 9){
+                t2 = t2 + String.valueOf(timeMin);
+            }
+            else
+                t2 = String.valueOf(timeMin);
+            tItog = tItog + t2 + ":" + t1;
+            musicTime.setText(tItog);
+
+            double curTime = mediaList.get(cnt).getCurrentTime().toSeconds();
+            if(curTime == totalTimeOfMusic){
+                mediaList.get(cnt).stop();
+                labelList.get(cnt).setStyle("-fx-text-fill: rgb(236, 4, 42)");
+            }
+        });
+    }
+
+    public void browseFunc(VBox playlist, ImageView songImage, Label musicBox, Label musicTime, ProgressBar progressBar){
+        if(Checked != -1){
+            mediaList.get(playCnt).stop();
+            Checked = 0;
+        }
+        if(list != null) {
+            Checked = 0;
+            System.out.println(list.get(0));
+            labelList.clear();
+            mediaList.clear();
+            playlist.getChildren().clear();
+            for(counter = 0;counter < list.size();counter++){
+                path = list.get(counter).getAbsolutePath();
+                path = path.replace("\\", "/");
+                System.out.println(path);
+                try{
+                    MP3 mp3 = new MP3(path);
+                    String st1 = mp3.getBand();
+                    String st2 = mp3.getTitle();
+                    if(st1 == null || st2 == null)
+                        elemList = new Label(path);
+                    else
+                        elemList = new Label(st1 + " - " + st2);
+                }catch(IOException ex) {
+                    System.out.println("Error!");
+                }
+                musicBox.setText("No tracks is playing");
+                musicTime.setText("00,00");
+                progressBar.setProgress(0);
+                labelList.add(elemList);
+                playlist.getChildren().add(labelList.get(counter));
+                mediaList.add(new MediaPlayer(new Media(list.get(counter).toURI().toString())));
+            }
+        }
+    }
+
+    public void mp3Worker(ImageView songImage, Label musicBox, String path){
+        try{
+            MP3 mp3 = new MP3(path);
+            musicBox.setText(mp3.getTitle());
+            String imagePath = mp3.getLyrics();
+            if(imagePath != null) {
+                imagePath = imagePath.replace("\\", "/");
+                File f = new File(imagePath);
+                songImage.setImage(new Image(f.toURI().toURL().toString()));
+            }
+        }catch(IOException ex){}
+    }
     public static void main(String[] args) {
         launch(args);
     }
